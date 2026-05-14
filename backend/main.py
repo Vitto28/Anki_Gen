@@ -6,6 +6,7 @@ from __future__ import annotations
 import io
 import csv
 import asyncio
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -41,6 +42,9 @@ STATE = AppState()
 
 # Generation progress tracking
 GENERATION_STATUS: dict[str, dict] = {}  # session-level
+
+# Cooperative cancel between POST /api/generate/stream and POST /api/generate/cancel
+generation_cancel_event = asyncio.Event()
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -180,7 +184,20 @@ async def list_chunks():
 @app.put("/api/chunks/{chunk_id}")
 async def update_chunk(chunk_id: str, body: UpdateChunkRequest):
     chunk = _get_chunk(chunk_id)
-    if body.text is not None:
+    doc = _get_document()
+    if body.source_start is not None and body.source_end is not None:
+        lo = min(body.source_start, body.source_end)
+        hi = max(body.source_start, body.source_end)
+        lo = max(0, min(lo, len(doc.normalized_text)))
+        hi = max(0, min(hi, len(doc.normalized_text)))
+        if hi <= lo:
+            raise HTTPException(status_code=400, detail="Invalid source span (empty).")
+        raw_slice = doc.normalized_text[lo:hi]
+        chunk.source_start = lo
+        chunk.source_end = hi
+        chunk.text = raw_slice
+        chunk.normalized_text, _ = normalize_text(raw_slice)
+    elif body.text is not None:
         chunk.text = body.text
         chunk.normalized_text, _ = normalize_text(body.text)
     if body.selected is not None:
@@ -254,6 +271,14 @@ async def merge_chunks(chunk_ids: list[str]):
 
 # ── Generation endpoints ──────────────────────────────────────────────────────
 
+
+@app.post("/api/generate/cancel")
+async def cancel_generation():
+    """Signal an in-progress /api/generate stream to stop after the current chunk."""
+    generation_cancel_event.set()
+    return {"ok": True}
+
+
 @app.post("/api/generate")
 async def generate_cards(settings: Optional[GenerateSettings] = None):
     """
@@ -269,15 +294,25 @@ async def generate_cards(settings: Optional[GenerateSettings] = None):
         raise HTTPException(status_code=400, detail="No chunks selected for generation.")
 
     async def event_stream():
+        generation_cancel_event.clear()
         STATE.cards = []
         total = len(selected)
         yield f'{{"type":"start","total":{total}}}\n'
-        
+
+        import json
+
         for i, chunk in enumerate(selected):
+            if generation_cancel_event.is_set():
+                yield json.dumps({
+                    "type": "cancelled",
+                    "index": i,
+                    "total": total,
+                    "card_count": len(STATE.cards),
+                }) + "\n"
+                return
             try:
                 card = await generate_cloze_for_chunk(chunk, STATE.generate_settings)
                 STATE.cards.append(card)
-                import json
                 payload = json.dumps({
                     "type": "progress",
                     "index": i + 1,
@@ -286,7 +321,6 @@ async def generate_cards(settings: Optional[GenerateSettings] = None):
                 })
                 yield f"{payload}\n"
             except Exception as exc:
-                import json
                 yield json.dumps({
                     "type": "error",
                     "index": i + 1,
@@ -294,7 +328,6 @@ async def generate_cards(settings: Optional[GenerateSettings] = None):
                     "error": str(exc),
                 }) + "\n"
 
-        import json
         yield json.dumps({"type": "done", "card_count": len(STATE.cards)}) + "\n"
 
     return StreamingResponse(event_stream(), media_type="text/plain")
@@ -318,6 +351,13 @@ async def regenerate_chunk(chunk_id: str, settings: Optional[GenerateSettings] =
 @app.get("/api/cards")
 async def list_cards():
     return [_card_to_dict(c) for c in STATE.cards]
+
+
+@app.post("/api/cards/clear")
+async def clear_all_cards():
+    """Remove all generated cards (e.g. before re-running generation)."""
+    STATE.cards = []
+    return {"ok": True}
 
 
 @app.put("/api/cards/{card_id}")
@@ -359,6 +399,13 @@ async def update_generate_settings(settings: GenerateSettings):
 
 # ── Export endpoints ──────────────────────────────────────────────────────────
 
+def _safe_export_filename(original_name: str) -> str:
+    stem = Path(original_name or "document").stem
+    stem = re.sub(r"[^\w\s\-]", "", stem, flags=re.UNICODE).strip().replace(" ", "_")
+    stem = stem[:80] if stem else "document"
+    return f"{stem}_ankigen.csv"
+
+
 @app.get("/api/export/csv")
 async def export_csv():
     """Export all cards as Anki-compatible CSV."""
@@ -373,10 +420,12 @@ async def export_csv():
         writer.writerow([card.cloze_text, tags])
 
     output.seek(0)
+    doc = STATE.document
+    filename = _safe_export_filename(doc.filename if doc else "document")
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode("utf-8")),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=anki_cloze_cards.csv"},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

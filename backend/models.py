@@ -108,6 +108,9 @@ class GenerateSettings(BaseModel):
 class UpdateChunkRequest(BaseModel):
     text: Optional[str] = None
     selected: Optional[bool] = None
+    # When both set, slice from the loaded document (allows overlap between chunks).
+    source_start: Optional[int] = None
+    source_end: Optional[int] = None
 
 
 class UpdateCardRequest(BaseModel):
