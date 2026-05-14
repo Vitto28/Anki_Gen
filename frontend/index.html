@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anki Cloze Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Newsreader:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    :root {
+      --bg: #0c0c0b;
+      --bg2: #141413;
+      --bg3: #1c1c1a;
+      --surface: #202020;
+      --surface2: #2a2a28;
+      --border: #2e2e2c;
+      --border2: #3a3a38;
+      --text: #e8e4dc;
+      --text2: #9e9a92;
+      --text3: #666260;
+      --accent: #c8a96e;
+      --accent2: #a88848;
+      --accent-dim: rgba(200, 169, 110, 0.12);
+      --green: #6db87a;
+      --green-dim: rgba(109, 184, 122, 0.12);
+      --yellow: #d4a843;
+      --yellow-dim: rgba(212, 168, 67, 0.12);
+      --red: #c96b6b;
+      --red-dim: rgba(201, 107, 107, 0.12);
+      --blue: #6b9ec9;
+      --radius: 4px;
+      --font-body: 'Newsreader', Georgia, serif;
+      --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body, #root {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+    /* ── Layout ── */
+    .app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    .topbar {
+      display: flex; align-items: center; gap: 16px;
+      padding: 0 24px;
+      height: 52px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .topbar-logo {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .topbar-sep { width: 1px; height: 20px; background: var(--border); }
+
+    .stage-nav {
+      display: flex; gap: 2px; flex: 1;
+    }
+
+    .stage-btn {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text3);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .stage-btn:hover { color: var(--text2); background: var(--surface); }
+    .stage-btn.active { color: var(--accent); background: var(--accent-dim); }
+    .stage-btn.done { color: var(--text2); }
+    .stage-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .stage-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%;
+      font-size: 9px; font-weight: 600;
+      background: var(--border); color: var(--text3);
+      margin-right: 6px;
+    }
+    .stage-btn.active .stage-num { background: var(--accent); color: var(--bg); }
+    .stage-btn.done .stage-num { background: var(--green); color: var(--bg); }
+
+    .topbar-actions { display: flex; gap: 8px; margin-left: auto; }
+
+    .main { flex: 1; overflow: hidden; display: flex; }
+    .panel { flex: 1; overflow-y: auto; padding: 24px; }
+    .panel-divider { width: 1px; background: var(--border); flex-shrink: 0; }
+
+    /* ── Buttons ── */
+    .btn {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--surface2); color: var(--text); border-color: var(--text3); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    .btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+    .btn.danger { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+    .btn.danger:hover { background: var(--red); color: var(--bg); }
+    .btn.sm { font-size: 10px; padding: 5px 10px; }
+
+    /* ── Inputs ── */
+    .input, textarea, select {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+    .input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 120px; line-height: 1.7; }
+    select { cursor: pointer; }
+
+    label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text3);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .field { margin-bottom: 16px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .card:hover { border-color: var(--border2); }
+
+    /* ── Severity badges ── */
+    .severity {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 2px;
+    }
+    .severity.low { background: var(--green-dim); color: var(--green); }
+    .severity.medium { background: var(--yellow-dim); color: var(--yellow); }
+    .severity.high { background: var(--red-dim); color: var(--red); }
+
+    /* ── Cloze highlighting ── */
+    .cloze-text {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .cloze-tag {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid rgba(200,169,110,0.25);
+      border-radius: 2px;
+      padding: 1px 4px;
+      font-weight: 500;
+    }
+
+    /* ── Progress ── */
+    .progress-bar-track {
+      height: 3px; background: var(--border);
+      border-radius: 2px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+
+    /* ── Section headers ── */
+    .section-header {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Source text highlight ── */
+    .source-text {
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 1.9;
+      color: var(--text2);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .source-highlight {
+      background: var(--accent-dim);
+      border-radius: 2px;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .source-highlight:hover { background: rgba(200,169,110,0.22); }
+    .source-highlight.selected {
+      background: rgba(200,169,110,0.2);
+      outline: 1px solid rgba(200,169,110,0.4);
+    }
+
+    /* ── Chunk item ── */
+    .chunk-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .chunk-item:hover { border-color: var(--border2); border-left-color: var(--accent2); }
+    .chunk-item.selected-chunk { border-left-color: var(--accent); background: var(--accent-dim); }
+    .chunk-item.deselected { opacity: 0.45; }
+    .chunk-text { font-size: 13px; color: var(--text2); line-height: 1.6; }
+    .chunk-meta {
+      display: flex; gap: 12px; margin-top: 8px;
+      font-family: var(--font-mono); font-size: 10px; color: var(--text3);
+    }
+
+    /* ── Stats row ── */
+    .stat-row {
+      display: flex; gap: 24px; margin-bottom: 20px;
+      padding: 14px; background: var(--surface); border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .stat { text-align: center; }
+    .stat-val {
+      font-family: var(--font-mono); font-size: 20px; font-weight: 600;
+      color: var(--accent); display: block;
+    }
+    .stat-label {
+      font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--text3);
+    }
+
+    /* ── Toggle ── */
+    .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .toggle-track {
+      width: 32px; height: 18px; border-radius: 9px;
+      background: var(--border2); position: relative; transition: background 0.2s;
+    }
+    .toggle-track.on { background: var(--accent); }
+    .toggle-thumb {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: white; position: absolute; top: 2px; left: 2px;
+      transition: left 0.2s;
+    }
+    .toggle-track.on .toggle-thumb { left: 16px; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 2px; margin-bottom: 20px; }
+    .tab {
+      font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 14px; border-radius: var(--radius);
+      border: none; background: transparent; color: var(--text3);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .tab:hover { color: var(--text2); background: var(--surface); }
+    .tab.active { background: var(--surface); color: var(--accent); }
+
+    /* ── Ollama status ── */
+    .ollama-status {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--font-mono); font-size: 10px; color: var(--text3);
+    }
+    .ollama-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--red);
+    }
+    .ollama-dot.ok { background: var(--green); }
+
+    /* ── Scrollable text panel ── */
+    .text-panel {
+      font-family: var(--font-body); font-size: 14px; line-height: 1.9;
+      color: var(--text2); padding: 20px; background: var(--bg2);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      max-height: calc(100vh - 200px); overflow-y: auto;
+    }
+
+    /* ── Validation messages ── */
+    .vld-msg {
+      font-family: var(--font-mono); font-size: 11px;
+      padding: 6px 10px; border-radius: var(--radius);
+      margin-top: 4px;
+    }
+    .vld-msg.error { background: var(--red-dim); color: var(--red); }
+    .vld-msg.warning { background: var(--yellow-dim); color: var(--yellow); }
+
+    /* ── Empty state ── */
+    .empty {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 12px; padding: 48px;
+      color: var(--text3); text-align: center;
+    }
+    .empty-icon { font-size: 32px; opacity: 0.4; }
+    .empty-text { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.05em; }
+
+    /* ── Drag-to-select hint ── */
+    .hint {
+      font-family: var(--font-mono); font-size: 10px; color: var(--text3);
+      padding: 8px 12px; background: var(--bg3); border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .fade-in { animation: fadeIn 0.2s ease forwards; }
+    @keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+    .pulsing { animation: pulse 1.5s infinite; }
+
+    /* ── Split layout ── */
+    .split { display: flex; gap: 0; flex: 1; overflow: hidden; }
+    .split-left { flex: 1; overflow-y: auto; padding: 24px; border-right: 1px solid var(--border); }
+    .split-right { width: 400px; flex-shrink: 0; overflow-y: auto; padding: 24px; }
+
+    /* ── Editable card ── */
+    .card-edit-area {
+      font-family: var(--font-mono); font-size: 12px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text);
+      padding: 10px 12px; width: 100%; resize: vertical;
+      min-height: 80px; line-height: 1.7; outline: none;
+    }
+    .card-edit-area:focus { border-color: var(--accent); }
+
+    /* ── Settings panel ── */
+    .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .number-input { width: 80px; }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid var(--border2); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const API = 'http://localhost:8000';
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    ...opts,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'API error');
+  }
+  return res;
+}
+
+function renderClozeText(text) {
+  if (!text) return null;
+  const parts = text.split(/({{c\d+::[^}]*}})/g);
+  return parts.map((p, i) => {
+    const m = p.match(/{{c(\d+)::([^}]*)}}/);
+    if (m) {
+      return <span key={i} className="cloze-tag">c{m[1]}: {m[2]}</span>;
+    }
+    return <span key={i}>{p}</span>;
+  });
+}
+
+function SeverityBadge({ severity }) {
+  const icons = { low: '✓', medium: '⚠', high: '✗' };
+  return (
+    <span className={`severity ${severity}`}>
+      {icons[severity]} {severity}
+    </span>
+  );
+}
+
+function Toggle({ on, onChange, label }) {
+  return (
+    <label className="toggle" onClick={() => onChange(!on)}>
+      <div className={`toggle-track ${on ? 'on' : ''}`}>
+        <div className="toggle-thumb" />
+      </div>
+      {label && <span style={{ fontSize: 12, color: 'var(--text2)', cursor: 'pointer' }}>{label}</span>}
+    </label>
+  );
+}
+
+// ── Stage 1: Input ────────────────────────────────────────────────────────────
+
+function InputStage({ onDone }) {
+  const [mode, setMode] = useState('paste');
+  const [text, setText] = useState('');
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const fileRef = useRef();
+
+  async function handleSubmit() {
+    setError(null);
+    setLoading(true);
+    try {
+      let res;
+      if (mode === 'paste') {
+        if (!text.trim()) { setError('Please enter some text.'); setLoading(false); return; }
+        res = await api('/api/ingest/text', {
+          method: 'POST',
+          body: JSON.stringify({ text, filename: 'pasted_text' }),
+        });
+      } else {
+        if (!file) { setError('Please select a file.'); setLoading(false); return; }
+        const fd = new FormData();
+        fd.append('file', file);
+        res = await fetch(API + '/api/ingest/file', { method: 'POST', body: fd });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail); }
+      }
+      const data = await res.json();
+      onDone(data);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 680, margin: '0 auto', padding: 32 }}>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontFamily: 'var(--font-body)', fontWeight: 300, fontSize: 28, color: 'var(--text)', fontStyle: 'italic', marginBottom: 6 }}>
+          Anki Cloze Generator
+        </h1>
+        <p style={{ color: 'var(--text3)', fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.08em' }}>
+          LOCAL-FIRST · DETERMINISTIC · HUMAN-REVIEWABLE
+        </p>
+      </div>
+
+      <div className="tabs">
+        <button className={`tab ${mode === 'paste' ? 'active' : ''}`} onClick={() => setMode('paste')}>
+          Paste Text
+        </button>
+        <button className={`tab ${mode === 'file' ? 'active' : ''}`} onClick={() => setMode('file')}>
+          Upload File
+        </button>
+      </div>
+
+      {mode === 'paste' ? (
+        <div className="field">
+          <label>Source Text</label>
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder="Paste your Markdown notes, textbook excerpts, or any educational text here..."
+            style={{ minHeight: 280, fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.8 }}
+          />
+          <div style={{ marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)' }}>
+            {text.length} characters · {text.split(/\s+/).filter(Boolean).length} words
+          </div>
+        </div>
+      ) : (
+        <div className="field">
+          <label>File Upload (.md, .txt, .pdf)</label>
+          <div
+            style={{
+              border: '2px dashed var(--border2)', borderRadius: 6, padding: 40,
+              textAlign: 'center', cursor: 'pointer', background: 'var(--bg2)',
+              transition: 'all 0.15s',
+            }}
+            onClick={() => fileRef.current.click()}
+            onDrop={e => { e.preventDefault(); setFile(e.dataTransfer.files[0]); }}
+            onDragOver={e => e.preventDefault()}
+          >
+            <div style={{ fontSize: 24, marginBottom: 10, opacity: 0.5 }}>📄</div>
+            {file ? (
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--accent)' }}>
+                {file.name} · {(file.size / 1024).toFixed(1)}KB
+              </div>
+            ) : (
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text3)' }}>
+                Click to browse or drag & drop
+              </div>
+            )}
+          </div>
+          <input ref={fileRef} type="file" accept=".md,.txt,.pdf" style={{ display: 'none' }}
+            onChange={e => setFile(e.target.files[0])} />
+        </div>
+      )}
+
+      {error && (
+        <div className="vld-msg error" style={{ marginBottom: 16 }}>{error}</div>
+      )}
+
+      <button className="btn primary" onClick={handleSubmit} disabled={loading} style={{ width: '100%' }}>
+        {loading ? <><span className="spinner" style={{ marginRight: 8 }} />Processing...</> : 'Continue →'}
+      </button>
+    </div>
+  );
+}
+
+// ── Stage 2: Chunk Review ─────────────────────────────────────────────────────
+
+function ChunkReviewStage({ doc, onDone, onBack }) {
+  const [chunks, setChunks] = useState([]);
+  const [docText, setDocText] = useState('');
+  const [settings, setSettings] = useState({ max_sentences: 5, max_chars: 500, min_sentences: 2 });
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [activeChunk, setActiveChunk] = useState(null);
+  const [editingChunk, setEditingChunk] = useState(null);
+  const [editText, setEditText] = useState('');
+
+  useEffect(() => {
+    loadDoc();
+    runChunker();
+  }, []);
+
+  async function loadDoc() {
+    const res = await api('/api/document');
+    const data = await res.json();
+    setDocText(data.normalized_text);
+  }
+
+  async function runChunker(s = settings) {
+    setGenerating(true);
+    try {
+      const res = await api('/api/chunks/generate', {
+        method: 'POST',
+        body: JSON.stringify(s),
+      });
+      const data = await res.json();
+      setChunks(data.chunks);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setGenerating(false);
+      setLoading(false);
+    }
+  }
+
+  async function toggleChunk(id) {
+    const chunk = chunks.find(c => c.chunk_id === id);
+    const res = await api(`/api/chunks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ selected: !chunk.selected }),
+    });
+    const updated = await res.json();
+    setChunks(prev => prev.map(c => c.chunk_id === id ? updated : c));
+  }
+
+  async function deleteChunk(id) {
+    await api(`/api/chunks/${id}`, { method: 'DELETE' });
+    setChunks(prev => prev.filter(c => c.chunk_id !== id));
+    if (activeChunk === id) setActiveChunk(null);
+  }
+
+  async function saveEdit(id) {
+    const res = await api(`/api/chunks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ text: editText }),
+    });
+    const updated = await res.json();
+    setChunks(prev => prev.map(c => c.chunk_id === id ? updated : c));
+    setEditingChunk(null);
+  }
+
+  // Build highlighted source text
+  function buildHighlightedSource() {
+    if (!docText || chunks.length === 0) {
+      return <span style={{ color: 'var(--text2)' }}>{docText}</span>;
+    }
+
+    const elements = [];
+    let pos = 0;
+
+    const sorted = [...chunks].sort((a, b) => a.source_start - b.source_start);
+    for (const chunk of sorted) {
+      const start = Math.min(chunk.source_start, docText.length);
+      const end = Math.min(chunk.source_end, docText.length);
+      if (pos < start) {
+        elements.push(<span key={`gap-${pos}`} style={{ color: 'var(--text3)' }}>{docText.slice(pos, start)}</span>);
+      }
+      if (start < end) {
+        elements.push(
+          <span
+            key={chunk.chunk_id}
+            className={`source-highlight ${chunk.selected ? 'selected' : ''}`}
+            onClick={() => setActiveChunk(chunk.chunk_id)}
+            title={`Chunk: ${chunk.char_count} chars`}
+            style={{ opacity: chunk.selected ? 1 : 0.5 }}
+          >
+            {docText.slice(start, end)}
+          </span>
+        );
+        pos = end;
+      }
+    }
+    if (pos < docText.length) {
+      elements.push(<span key="tail" style={{ color: 'var(--text3)' }}>{docText.slice(pos)}</span>);
+    }
+    return elements;
+  }
+
+  const selectedCount = chunks.filter(c => c.selected).length;
+
+  return (
+    <div className="split" style={{ flex: 1, overflow: 'hidden' }}>
+      {/* Left: Source text */}
+      <div className="split-left">
+        <div className="section-header">Source Document</div>
+        <div className="hint" style={{ marginBottom: 16 }}>
+          Highlighted regions show chunk boundaries. Click a chunk to navigate.
+        </div>
+        <div className="text-panel" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+          <div className="source-text">{buildHighlightedSource()}</div>
+        </div>
+      </div>
+
+      {/* Right: Chunk list */}
+      <div className="split-right">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div className="section-header" style={{ margin: 0 }}>Chunks</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn sm" onClick={() => runChunker()}>Re-chunk</button>
+          </div>
+        </div>
+
+        {/* Settings */}
+        <details style={{ marginBottom: 16 }}>
+          <summary style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)', cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            Chunk Settings
+          </summary>
+          <div style={{ padding: '12px 0', display: 'flex', gap: 12 }}>
+            {['max_sentences','max_chars','min_sentences'].map(k => (
+              <div key={k} className="field" style={{ flex: 1, margin: 0 }}>
+                <label>{k.replace(/_/g, ' ')}</label>
+                <input type="number" className="input" value={settings[k]}
+                  onChange={e => setSettings(p => ({ ...p, [k]: +e.target.value }))}
+                  style={{ padding: '5px 8px', fontSize: 12 }}
+                />
+              </div>
+            ))}
+          </div>
+          <button className="btn sm primary" onClick={() => runChunker(settings)}>Apply</button>
+        </details>
+
+        {/* Stats */}
+        <div className="stat-row" style={{ padding: '10px 14px', marginBottom: 16 }}>
+          <div className="stat">
+            <span className="stat-val">{chunks.length}</span>
+            <span className="stat-label">Total</span>
+          </div>
+          <div className="stat">
+            <span className="stat-val" style={{ color: 'var(--green)' }}>{selectedCount}</span>
+            <span className="stat-label">Selected</span>
+          </div>
+          <div className="stat">
+            <span className="stat-val" style={{ color: 'var(--text3)' }}>{chunks.length - selectedCount}</span>
+            <span className="stat-label">Skipped</span>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="empty"><div className="spinner pulsing" /><div className="empty-text">Generating chunks...</div></div>
+        ) : chunks.length === 0 ? (
+          <div className="empty"><div className="empty-icon">📦</div><div className="empty-text">No chunks generated</div></div>
+        ) : (
+          chunks.map((chunk, i) => (
+            <div
+              key={chunk.chunk_id}
+              className={`chunk-item ${chunk.selected ? 'selected-chunk' : 'deselected'} fade-in`}
+              style={{ animationDelay: `${i * 0.03}s` }}
+              onClick={() => setActiveChunk(chunk.chunk_id === activeChunk ? null : chunk.chunk_id)}
+            >
+              {editingChunk === chunk.chunk_id ? (
+                <div onClick={e => e.stopPropagation()}>
+                  <textarea className="card-edit-area" value={editText}
+                    onChange={e => setEditText(e.target.value)} style={{ minHeight: 80 }} />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button className="btn sm primary" onClick={() => saveEdit(chunk.chunk_id)}>Save</button>
+                    <button className="btn sm" onClick={() => setEditingChunk(null)}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="chunk-text">{chunk.text.slice(0, 180)}{chunk.text.length > 180 ? '…' : ''}</div>
+                  <div className="chunk-meta">
+                    <span>#{i + 1}</span>
+                    <span>{chunk.char_count}c</span>
+                    <span>{chunk.sentence_count}s</span>
+                  </div>
+                  {activeChunk === chunk.chunk_id && (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 10 }} onClick={e => e.stopPropagation()}>
+                      <button className="btn sm" onClick={() => { setEditingChunk(chunk.chunk_id); setEditText(chunk.text); }}>
+                        Edit
+                      </button>
+                      <button className="btn sm" onClick={() => toggleChunk(chunk.chunk_id)}>
+                        {chunk.selected ? 'Deselect' : 'Select'}
+                      </button>
+                      <button className="btn sm danger" onClick={() => deleteChunk(chunk.chunk_id)}>
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ))
+        )}
+
+        <div style={{ marginTop: 20 }}>
+          <button className="btn primary" style={{ width: '100%' }}
+            disabled={selectedCount === 0}
+            onClick={() => onDone(chunks)}>
+            Generate Cards ({selectedCount} chunks) →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Stage 3: Generation ───────────────────────────────────────────────────────
+
+function GenerationStage({ onDone }) {
+  const [settings, setSettings] = useState({
+    model: 'llama3.2:3b',
+    max_clozes: 5,
+    max_hidden_proportion: 0.35,
+    max_retries: 3,
+    ollama_url: 'http://localhost:11434',
+  });
+  const [ollamaStatus, setOllamaStatus] = useState(null);
+  const [models, setModels] = useState([]);
+  const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0, cards: [] });
+  const [error, setError] = useState(null);
+
+  useEffect(() => { checkOllama(); }, []);
+
+  async function checkOllama() {
+    try {
+      const res = await api('/api/ollama/status');
+      const data = await res.json();
+      setOllamaStatus(data.status === 'ok');
+      setModels(data.models || []);
+      if (data.models?.length > 0) {
+        setSettings(s => ({ ...s, model: data.models[0] }));
+      }
+    } catch { setOllamaStatus(false); }
+  }
+
+  async function startGeneration() {
+    setError(null);
+    setGenerating(true);
+    setProgress({ done: 0, total: 0, cards: [] });
+
+    try {
+      // Save settings first
+      await api('/api/settings/generate', { method: 'PUT', body: JSON.stringify(settings) });
+
+      const res = await fetch(API + '/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+
+      if (!res.ok) { const e = await res.json(); throw new Error(e.detail); }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const msg = JSON.parse(line);
+            if (msg.type === 'start') {
+              setProgress(p => ({ ...p, total: msg.total }));
+            } else if (msg.type === 'progress') {
+              setProgress(p => ({
+                done: msg.index,
+                total: msg.total,
+                cards: [...p.cards, msg.card],
+              }));
+            } else if (msg.type === 'done') {
+              setGenerating(false);
+              onDone();
+              return;
+            }
+          } catch {}
+        }
+      }
+    } catch (e) {
+      setError(e.message);
+      setGenerating(false);
+    }
+  }
+
+  const pct = progress.total > 0 ? (progress.done / progress.total) * 100 : 0;
+
+  return (
+    <div style={{ maxWidth: 680, margin: '0 auto', padding: 32 }}>
+      <div className="section-header">LLM Configuration</div>
+
+      {/* Ollama status */}
+      <div style={{ marginBottom: 24, padding: 14, background: 'var(--surface)', borderRadius: 4, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="ollama-status">
+          <div className={`ollama-dot ${ollamaStatus ? 'ok' : ''}`} />
+          {ollamaStatus === null ? 'Checking Ollama...' :
+           ollamaStatus ? 'Ollama connected' : 'Ollama not reachable'}
+        </div>
+        <button className="btn sm" onClick={checkOllama}>Refresh</button>
+      </div>
+
+      {!ollamaStatus && (
+        <div className="vld-msg warning" style={{ marginBottom: 20 }}>
+          Ollama must be running locally. Start it with: <code style={{ background: 'var(--bg3)', padding: '1px 5px', borderRadius: 3 }}>ollama serve</code>
+        </div>
+      )}
+
+      <div className="settings-grid">
+        <div className="field">
+          <label>Model</label>
+          {models.length > 0 ? (
+            <select value={settings.model} onChange={e => setSettings(s => ({ ...s, model: e.target.value }))}>
+              {models.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          ) : (
+            <input className="input" value={settings.model}
+              onChange={e => setSettings(s => ({ ...s, model: e.target.value }))}
+              placeholder="e.g. llama3.2:3b" />
+          )}
+        </div>
+        <div className="field">
+          <label>Ollama URL</label>
+          <input className="input" value={settings.ollama_url}
+            onChange={e => setSettings(s => ({ ...s, ollama_url: e.target.value }))} />
+        </div>
+        <div className="field">
+          <label>Max Clozes per Card</label>
+          <input type="number" className="input" min={1} max={10} value={settings.max_clozes}
+            onChange={e => setSettings(s => ({ ...s, max_clozes: +e.target.value }))} />
+        </div>
+        <div className="field">
+          <label>Max Hidden Proportion</label>
+          <input type="number" className="input" min={0.1} max={0.9} step={0.05}
+            value={settings.max_hidden_proportion}
+            onChange={e => setSettings(s => ({ ...s, max_hidden_proportion: +e.target.value }))} />
+        </div>
+        <div className="field">
+          <label>Max Retries</label>
+          <input type="number" className="input" min={0} max={5} value={settings.max_retries}
+            onChange={e => setSettings(s => ({ ...s, max_retries: +e.target.value }))} />
+        </div>
+      </div>
+
+      {error && <div className="vld-msg error" style={{ marginBottom: 16 }}>{error}</div>}
+
+      {generating && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text2)' }}>
+              Generating cards...
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)' }}>
+              {progress.done} / {progress.total}
+            </span>
+          </div>
+          <div className="progress-bar-track">
+            <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
+          </div>
+
+          {progress.cards.slice(-3).map(card => (
+            <div key={card.card_id} className="card fade-in" style={{ marginTop: 12, padding: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <SeverityBadge severity={card.review_severity} />
+                {card.retry_count > 0 && (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--yellow)' }}>
+                    {card.retry_count} retries
+                  </span>
+                )}
+              </div>
+              <div className="cloze-text">{renderClozeText(card.cloze_text)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!generating && (
+        <button className="btn primary" style={{ width: '100%' }}
+          onClick={startGeneration} disabled={!ollamaStatus}>
+          Start Generation →
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Stage 4: Card Review ──────────────────────────────────────────────────────
+
+function CardReviewStage({ onExport }) {
+  const [cards, setCards] = useState([]);
+  const [filter, setFilter] = useState('all');
+  const [editingCard, setEditingCard] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState({});
+
+  useEffect(() => { loadCards(); }, []);
+
+  async function loadCards() {
+    const res = await api('/api/cards');
+    setCards(await res.json());
+    setLoading(false);
+  }
+
+  async function saveEdit(id) {
+    const res = await api(`/api/cards/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ cloze_text: editText }),
+    });
+    const updated = await res.json();
+    setCards(prev => prev.map(c => c.card_id === id ? updated : c));
+    setEditingCard(null);
+  }
+
+  async function deleteCard(id) {
+    await api(`/api/cards/${id}`, { method: 'DELETE' });
+    setCards(prev => prev.filter(c => c.card_id !== id));
+  }
+
+  async function regenerate(chunkId, cardId) {
+    setRegenerating(p => ({ ...p, [cardId]: true }));
+    try {
+      const res = await api(`/api/generate/single/${chunkId}`, { method: 'POST' });
+      const updated = await res.json();
+      setCards(prev => prev.map(c => c.card_id === cardId ? updated : c));
+    } catch (e) { console.error(e); }
+    setRegenerating(p => ({ ...p, [cardId]: false }));
+  }
+
+  const filtered = cards.filter(c => {
+    if (filter === 'all') return true;
+    return c.review_severity === filter;
+  });
+
+  const counts = {
+    all: cards.length,
+    low: cards.filter(c => c.review_severity === 'low').length,
+    medium: cards.filter(c => c.review_severity === 'medium').length,
+    high: cards.filter(c => c.review_severity === 'high').length,
+  };
+
+  return (
+    <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div className="section-header" style={{ margin: 0 }}>Card Review</div>
+          <button className="btn primary" onClick={onExport}>Export CSV →</button>
+        </div>
+
+        {/* Filter tabs */}
+        <div className="tabs">
+          {['all','low','medium','high'].map(f => (
+            <button key={f} className={`tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
+              {f} <span style={{ opacity: 0.6, marginLeft: 4 }}>({counts[f]})</span>
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="empty"><div className="spinner pulsing" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="empty">
+            <div className="empty-icon">🎴</div>
+            <div className="empty-text">No cards to display</div>
+          </div>
+        ) : (
+          filtered.map((card, i) => (
+            <div key={card.card_id} className="card fade-in" style={{ animationDelay: `${i * 0.02}s` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                <SeverityBadge severity={card.review_severity} />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {card.retry_count > 0 && (
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--yellow)' }}>
+                      {card.retry_count} retries
+                    </span>
+                  )}
+                  <button className="btn sm" onClick={() => regenerate(card.chunk_id, card.card_id)}
+                    disabled={regenerating[card.card_id]}>
+                    {regenerating[card.card_id] ? <span className="spinner" /> : 'Regen'}
+                  </button>
+                  <button className="btn sm" onClick={() => { setEditingCard(card.card_id); setEditText(card.cloze_text); }}>
+                    Edit
+                  </button>
+                  <button className="btn sm danger" onClick={() => deleteCard(card.card_id)}>
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              {editingCard === card.card_id ? (
+                <div>
+                  <textarea className="card-edit-area" value={editText}
+                    onChange={e => setEditText(e.target.value)} />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button className="btn sm primary" onClick={() => saveEdit(card.card_id)}>Save & Validate</button>
+                    <button className="btn sm" onClick={() => setEditingCard(null)}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="cloze-text">{renderClozeText(card.cloze_text)}</div>
+              )}
+
+              {/* Validation messages */}
+              {card.validation.errors.map((e, i) => (
+                <div key={i} className="vld-msg error" style={{ marginTop: 8 }}>{e}</div>
+              ))}
+              {card.validation.warnings.map((w, i) => (
+                <div key={i} className="vld-msg warning" style={{ marginTop: 4 }}>{w}</div>
+              ))}
+
+              {/* Original text (collapsed) */}
+              <details style={{ marginTop: 10 }}>
+                <summary style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)', cursor: 'pointer' }}>
+                  Source text
+                </summary>
+                <div style={{ marginTop: 8, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text3)', lineHeight: 1.7 }}>
+                  {card.original_text}
+                </div>
+              </details>
+
+              <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
+                {card.tags.map(tag => (
+                  <span key={tag} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, padding: '2px 7px', background: 'var(--bg3)', borderRadius: 2, color: 'var(--text3)', border: '1px solid var(--border)' }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Right panel: Summary */}
+      <div style={{ width: 260, borderLeft: '1px solid var(--border)', padding: 20, overflow: 'auto' }}>
+        <div className="section-header">Summary</div>
+        <div className="stat-row" style={{ flexDirection: 'column', gap: 16 }}>
+          <div className="stat" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left' }}>
+            <span className="stat-label">Total Cards</span>
+            <span className="stat-val" style={{ fontSize: 18 }}>{cards.length}</span>
+          </div>
+          <div className="stat" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left' }}>
+            <span className="stat-label" style={{ color: 'var(--green)' }}>✓ Low</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--green)' }}>{counts.low}</span>
+          </div>
+          <div className="stat" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left' }}>
+            <span className="stat-label" style={{ color: 'var(--yellow)' }}>⚠ Medium</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--yellow)' }}>{counts.medium}</span>
+          </div>
+          <div className="stat" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left' }}>
+            <span className="stat-label" style={{ color: 'var(--red)' }}>✗ High</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--red)' }}>{counts.high}</span>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 20 }}>
+          <div className="section-header">Severity Guide</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)', lineHeight: 2 }}>
+            <div><span style={{ color: 'var(--green)' }}>LOW</span> — Passed validation, good density, formatting preserved</div>
+            <div style={{ marginTop: 8 }}><span style={{ color: 'var(--yellow)' }}>MEDIUM</span> — Many clozes, long chunk, or dense hidden content</div>
+            <div style={{ marginTop: 8 }}><span style={{ color: 'var(--red)' }}>HIGH</span> — Text mismatch, malformed syntax, or overlapping deletions</div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 24 }}>
+          <button className="btn primary" style={{ width: '100%' }} onClick={onExport}>
+            Export CSV
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Stage 5: Export ───────────────────────────────────────────────────────────
+
+function ExportStage({ onReset }) {
+  const [done, setDone] = useState(false);
+
+  async function doExport() {
+    const res = await fetch(API + '/api/export/csv');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'anki_cloze_cards.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    setDone(true);
+  }
+
+  useEffect(() => { doExport(); }, []);
+
+  return (
+    <div style={{ maxWidth: 500, margin: '0 auto', padding: 48, textAlign: 'center' }}>
+      <div style={{ fontSize: 48, marginBottom: 20 }}>✓</div>
+      <h2 style={{ fontFamily: 'var(--font-body)', fontWeight: 300, fontSize: 24, fontStyle: 'italic', marginBottom: 12 }}>
+        Cards exported!
+      </h2>
+      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text3)', lineHeight: 1.9, marginBottom: 32 }}>
+        Your CSV file has been downloaded.<br/>
+        Import it into Anki via <strong style={{ color: 'var(--text2)' }}>File → Import</strong>.<br/>
+        Make sure to select <strong style={{ color: 'var(--text2)' }}>Cloze</strong> as the note type.
+      </p>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: 16, marginBottom: 24, textAlign: 'left' }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          Import Settings
+        </div>
+        {[
+          ['Type', 'Cloze'],
+          ['Field 1', 'Text'],
+          ['Field 2', 'Tags'],
+          ['Separator', 'Comma'],
+        ].map(([k, v]) => (
+          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text2)', padding: '3px 0' }}>
+            <span style={{ color: 'var(--text3)' }}>{k}</span><span>{v}</span>
+          </div>
+        ))}
+      </div>
+      <button className="btn" onClick={onReset} style={{ width: '100%' }}>
+        Start New Document
+      </button>
+    </div>
+  );
+}
+
+// ── Root App ──────────────────────────────────────────────────────────────────
+
+const STAGES = [
+  { id: 'input', label: 'Input' },
+  { id: 'chunks', label: 'Chunks' },
+  { id: 'generate', label: 'Generate' },
+  { id: 'review', label: 'Review' },
+  { id: 'export', label: 'Export' },
+];
+
+function App() {
+  const [stageIdx, setStageIdx] = useState(0);
+  const [docInfo, setDocInfo] = useState(null);
+  const [cardCount, setCardCount] = useState(0);
+
+  function reset() {
+    setStageIdx(0);
+    setDocInfo(null);
+    setCardCount(0);
+  }
+
+  return (
+    <div className="app">
+      {/* Top bar */}
+      <div className="topbar">
+        <div className="topbar-logo">⟨ Cloze Gen ⟩</div>
+        <div className="topbar-sep" />
+        <div className="stage-nav">
+          {STAGES.map((s, i) => (
+            <button
+              key={s.id}
+              className={`stage-btn ${i === stageIdx ? 'active' : ''} ${i < stageIdx ? 'done' : ''}`}
+              onClick={() => i < stageIdx && setStageIdx(i)}
+              disabled={i > stageIdx}
+            >
+              <span className="stage-num">{i < stageIdx ? '✓' : i + 1}</span>
+              {s.label}
+            </button>
+          ))}
+        </div>
+        {docInfo && (
+          <div style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)', display: 'flex', gap: 16 }}>
+            <span>{docInfo.filename}</span>
+            <span>{docInfo.char_count?.toLocaleString()} chars</span>
+          </div>
+        )}
+      </div>
+
+      {/* Main content */}
+      <div className="main">
+        {stageIdx === 0 && (
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <InputStage onDone={info => { setDocInfo(info); setStageIdx(1); }} />
+          </div>
+        )}
+        {stageIdx === 1 && (
+          <ChunkReviewStage
+            doc={docInfo}
+            onDone={() => setStageIdx(2)}
+            onBack={() => setStageIdx(0)}
+          />
+        )}
+        {stageIdx === 2 && (
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <GenerationStage onDone={() => setStageIdx(3)} />
+          </div>
+        )}
+        {stageIdx === 3 && (
+          <CardReviewStage onExport={() => setStageIdx(4)} />
+        )}
+        {stageIdx === 4 && (
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <ExportStage onReset={reset} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
