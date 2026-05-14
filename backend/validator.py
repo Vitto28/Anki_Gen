@@ -16,8 +16,9 @@ import re
 from models import ValidationResult, ReviewSeverity, ClozeCard
 from normalizer import normalize_text
 
-# Matches {{cN::content}} — N is the cloze number, content is the hidden text
-CLOZE_RE = re.compile(r'\{\{c(\d+)::([^}]*)\}\}')
+# Matches {{cN::content}} — N is the cloze number, content is the hidden text (no "}" inside).
+# Allows minor whitespace after "{{" / before "}}" (models sometimes insert spaces).
+CLOZE_RE = re.compile(r'\{\{\s*c(\d+)\s*::([^}]*?)\s*\}\}')
 
 
 def _parse_cloze_spans(cloze_text: str) -> list[tuple[int, int, int, str]]:
@@ -71,6 +72,16 @@ def validate_card(original_text: str, cloze_text: str,
     if not spans:
         result.valid = False
         result.errors.append("No cloze deletions found.")
+        return result, ReviewSeverity.HIGH
+
+    for span in spans:
+        if not span[3].strip():
+            result.valid = False
+            result.errors.append(
+                f"Empty cloze deletion (c{span[2]}). Every cloze must wrap non-empty text from the source."
+            )
+
+    if result.errors:
         return result, ReviewSeverity.HIGH
 
     # ── 4. Numbering verification ────────────────────────────────────────────

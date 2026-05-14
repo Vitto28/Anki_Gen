@@ -36,6 +36,29 @@
       --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
     }
 
+    [data-theme="light"] {
+      --bg: #f4f1ea;
+      --bg2: #ebe6dc;
+      --bg3: #e2dcd0;
+      --surface: #ddd8cc;
+      --surface2: #d2cdc2;
+      --border: #c4bfb4;
+      --border2: #b0aaa0;
+      --text: #1a1916;
+      --text2: #3d3a34;
+      --text3: #7a756b;
+      --accent: #7a5c20;
+      --accent2: #5c4518;
+      --accent-dim: rgba(122, 92, 32, 0.12);
+      --green: #2d6a3e;
+      --green-dim: rgba(45, 106, 62, 0.12);
+      --yellow: #8a6a12;
+      --yellow-dim: rgba(138, 106, 18, 0.18);
+      --red: #9a3535;
+      --red-dim: rgba(154, 53, 53, 0.12);
+      --blue: #2a5f8a;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     html, body, #root {
@@ -112,7 +135,38 @@
     .stage-btn.active .stage-num { background: var(--accent); color: var(--bg); }
     .stage-btn.done .stage-num { background: var(--green); color: var(--bg); }
 
-    .topbar-actions { display: flex; gap: 8px; margin-left: auto; }
+    .theme-toggle-nav {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text3);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      cursor: pointer;
+      user-select: none;
+      padding: 4px 8px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg3);
+    }
+    .theme-toggle-nav:hover { color: var(--text2); border-color: var(--border2); }
+
+    .topbar-doc {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text3);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      max-width: 220px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-fill { flex: 1; min-width: 8px; }
 
     .main { flex: 1; overflow: hidden; display: flex; }
     .panel { flex: 1; overflow-y: auto; padding: 24px; }
@@ -238,7 +292,7 @@
       border-bottom: 1px solid var(--border);
     }
 
-    /* ── Source text highlight ── */
+    /* ── Source text highlight (chunk stage) ── */
     .source-text {
       font-family: var(--font-body);
       font-size: 14px;
@@ -247,19 +301,48 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
-    .source-highlight {
-      background: var(--accent-dim);
-      border-radius: 2px;
-      color: var(--text);
-      cursor: pointer;
+    .source-gap {
+      color: var(--text3);
+      opacity: 0.92;
     }
-    .source-highlight:hover { background: rgba(200,169,110,0.22); }
-    .source-highlight.selected {
-      background: rgba(200,169,110,0.2);
-      outline: 1px solid rgba(200,169,110,0.4);
+    .source-chunk-dim {
+      background: rgba(128, 128, 128, 0.14);
+      color: var(--text2);
+      border-radius: 2px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .source-chunk-dim:hover { background: rgba(128, 128, 128, 0.22); }
+    .source-chunk-active {
+      background: var(--yellow-dim);
+      color: var(--text);
+      border-radius: 2px;
+      cursor: pointer;
+      outline: 1px solid rgba(212, 168, 67, 0.45);
+      box-shadow: 0 0 0 1px rgba(212, 168, 67, 0.08);
+    }
+    [data-theme="light"] .source-chunk-active {
+      outline-color: rgba(138, 106, 18, 0.5);
     }
 
-    /* ── Chunk item ── */
+    .source-chunk-wrap {
+      position: relative;
+      display: inline;
+    }
+    .boundary-handle {
+      display: inline-block;
+      width: 5px;
+      min-height: 1.1em;
+      vertical-align: text-bottom;
+      margin: 0 1px;
+      border-radius: 2px;
+      background: var(--accent);
+      cursor: ew-resize;
+      opacity: 0.85;
+      flex-shrink: 0;
+    }
+    .boundary-handle:hover { opacity: 1; background: var(--accent2); }
+
     .chunk-item {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -267,12 +350,27 @@
       border-radius: var(--radius);
       padding: 12px 14px;
       margin-bottom: 8px;
+      margin-left: 18px;
+      margin-right: 2px;
       cursor: pointer;
-      transition: all 0.15s;
+      transition: margin 0.18s ease, padding 0.18s ease, border-color 0.15s, background 0.15s;
     }
     .chunk-item:hover { border-color: var(--border2); border-left-color: var(--accent2); }
-    .chunk-item.selected-chunk { border-left-color: var(--accent); background: var(--accent-dim); }
-    .chunk-item.deselected { opacity: 0.45; }
+    .chunk-item.selected-chunk { border-left-color: var(--accent); }
+    .chunk-item.chunk-item-active {
+      margin-left: 0;
+      margin-right: 0;
+      padding-left: 16px;
+      padding-right: 16px;
+      border-left-width: 4px;
+      background: var(--yellow-dim);
+      border-color: rgba(212, 168, 67, 0.35);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+    }
+    [data-theme="light"] .chunk-item.chunk-item-active {
+      border-color: rgba(138, 106, 18, 0.35);
+    }
+    .chunk-item.deselected { opacity: 0.42; }
     .chunk-text { font-size: 13px; color: var(--text2); line-height: 1.6; }
     .chunk-meta {
       display: flex; gap: 12px; margin-top: 8px;
@@ -374,7 +472,12 @@
     /* ── Split layout ── */
     .split { display: flex; gap: 0; flex: 1; overflow: hidden; }
     .split-left { flex: 1; overflow-y: auto; padding: 24px; border-right: 1px solid var(--border); }
-    .split-right { width: 400px; flex-shrink: 0; overflow-y: auto; padding: 24px; }
+    .split-right {
+      width: min(460px, 42vw);
+      flex-shrink: 0;
+      overflow-y: auto;
+      padding: 24px;
+    }
 
     /* ── Editable card ── */
     .card-edit-area {
@@ -400,6 +503,7 @@
   </style>
 </head>
 <body>
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('ankigen_theme') || 'dark');</script>
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
@@ -573,11 +677,63 @@ function ChunkReviewStage({ doc, onDone, onBack }) {
   const [activeChunk, setActiveChunk] = useState(null);
   const [editingChunk, setEditingChunk] = useState(null);
   const [editText, setEditText] = useState('');
+  const textPanelRef = useRef(null);
+  const MIN_SPAN = 15;
+  const PX_PER_CHAR = 7;
 
   useEffect(() => {
     loadDoc();
     runChunker();
   }, []);
+
+  useEffect(() => {
+    if (!activeChunk) return;
+    const t = setTimeout(() => {
+      const row = document.getElementById(`chunk-row-${activeChunk}`);
+      if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      const anch = document.getElementById(`source-anch-${activeChunk}`);
+      if (anch) anch.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [activeChunk, chunks]);
+
+  function boundsFor(c) {
+    const lo = Math.min(c.source_start ?? 0, c.source_end ?? 0);
+    const hi = Math.max(c.source_start ?? 0, c.source_end ?? 0);
+    return { lo, hi };
+  }
+
+  function buildSegments() {
+    if (!docText) return [];
+    const bounds = new Set([0, docText.length]);
+    for (const c of chunks) {
+      const { lo, hi } = boundsFor(c);
+      bounds.add(Math.max(0, Math.min(lo, docText.length)));
+      bounds.add(Math.max(0, Math.min(hi, docText.length)));
+    }
+    const sorted = [...bounds].sort((x, y) => x - y);
+    const out = [];
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const a = sorted[i];
+      const b = sorted[i + 1];
+      if (b <= a) continue;
+      const ids = chunks
+        .filter(c => {
+          const { lo, hi } = boundsFor(c);
+          return lo <= a && hi >= b;
+        })
+        .map(c => c.chunk_id);
+      out.push({ a, b, text: docText.slice(a, b), ids });
+    }
+    return out;
+  }
+
+  function pickChunkIdForSeg(seg) {
+    for (const c of chunks) {
+      if (seg.ids.includes(c.chunk_id)) return c.chunk_id;
+    }
+    return seg.ids[0] ?? null;
+  }
 
   async function loadDoc() {
     const res = await api('/api/document');
@@ -594,6 +750,7 @@ function ChunkReviewStage({ doc, onDone, onBack }) {
       });
       const data = await res.json();
       setChunks(data.chunks);
+      setActiveChunk(null);
     } catch (e) {
       console.error(e);
     } finally {
@@ -628,41 +785,109 @@ function ChunkReviewStage({ doc, onDone, onBack }) {
     setEditingChunk(null);
   }
 
-  // Build highlighted source text
-  function buildHighlightedSource() {
-    if (!docText || chunks.length === 0) {
+  async function updateChunkBounds(id, lo, hi) {
+    const L = Math.min(lo, hi);
+    const H = Math.max(lo, hi);
+    if (H - L < MIN_SPAN || L < 0 || H > docText.length) return;
+    const res = await api(`/api/chunks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ source_start: L, source_end: H }),
+    });
+    const updated = await res.json();
+    setChunks(prev => prev.map(c => (c.chunk_id === id ? { ...c, ...updated } : c)));
+  }
+
+  function pxPerChar() {
+    const el = textPanelRef.current;
+    if (!el || !docText.length) return PX_PER_CHAR;
+    const w = Math.max(120, el.clientWidth - 48);
+    return Math.max(5, w / docText.length);
+  }
+
+  function beginBoundaryDrag(side, e, chunkId) {
+    e.preventDefault();
+    e.stopPropagation();
+    const c = chunks.find(x => x.chunk_id === chunkId);
+    if (!c) return;
+    const { lo, hi } = boundsFor(c);
+    const startX = e.clientX;
+    const origLo = lo;
+    const origHi = hi;
+    const onMove = () => {};
+    const onUp = async ev => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      const dx = ev.clientX - startX;
+      const chars = Math.round(dx / pxPerChar());
+      let nLo = origLo;
+      let nHi = origHi;
+      if (side === 'left') {
+        nLo = Math.max(0, Math.min(origLo + chars, origHi - MIN_SPAN));
+      } else {
+        nHi = Math.min(docText.length, Math.max(origHi + chars, origLo + MIN_SPAN));
+      }
+      if (nHi - nLo >= MIN_SPAN) await updateChunkBounds(chunkId, nLo, nHi);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  function renderSource() {
+    if (!docText) return <span className="source-gap" />;
+    if (chunks.length === 0) {
       return <span style={{ color: 'var(--text2)' }}>{docText}</span>;
     }
+    const segs = buildSegments();
+    const ac = activeChunk ? chunks.find(c => c.chunk_id === activeChunk) : null;
+    const activeBounds = ac ? boundsFor(ac) : null;
 
-    const elements = [];
-    let pos = 0;
+    return segs.map((seg, idx) => {
+      const has = seg.ids.length > 0;
+      const isActive = activeChunk && seg.ids.includes(activeChunk);
+      const cls = !has ? 'source-gap' : isActive ? 'source-chunk-active' : 'source-chunk-dim';
+      const onSegClick = () => {
+        if (!has) return;
+        const id = pickChunkIdForSeg(seg);
+        setActiveChunk(prev => (prev === id ? null : id));
+      };
+      const showLeft =
+        activeBounds &&
+        activeChunk &&
+        seg.ids.includes(activeChunk) &&
+        seg.a === activeBounds.lo;
+      const showRight =
+        activeBounds &&
+        activeChunk &&
+        seg.ids.includes(activeChunk) &&
+        seg.b === activeBounds.hi;
 
-    const sorted = [...chunks].sort((a, b) => a.source_start - b.source_start);
-    for (const chunk of sorted) {
-      const start = Math.min(chunk.source_start, docText.length);
-      const end = Math.min(chunk.source_end, docText.length);
-      if (pos < start) {
-        elements.push(<span key={`gap-${pos}`} style={{ color: 'var(--text3)' }}>{docText.slice(pos, start)}</span>);
-      }
-      if (start < end) {
-        elements.push(
+      return (
+        <span key={`${seg.a}-${seg.b}-${idx}`} className="source-chunk-wrap">
+          {showLeft && (
+            <span
+              className="boundary-handle"
+              title="Drag to adjust chunk start"
+              onPointerDown={e => beginBoundaryDrag('left', e, activeChunk)}
+            />
+          )}
           <span
-            key={chunk.chunk_id}
-            className={`source-highlight ${chunk.selected ? 'selected' : ''}`}
-            onClick={() => setActiveChunk(chunk.chunk_id)}
-            title={`Chunk: ${chunk.char_count} chars`}
-            style={{ opacity: chunk.selected ? 1 : 0.5 }}
+            id={activeChunk && seg.ids.includes(activeChunk) && seg.a === activeBounds?.lo ? `source-anch-${activeChunk}` : undefined}
+            className={cls}
+            onClick={onSegClick}
+            title={has ? 'Select chunk' : ''}
           >
-            {docText.slice(start, end)}
+            {seg.text}
           </span>
-        );
-        pos = end;
-      }
-    }
-    if (pos < docText.length) {
-      elements.push(<span key="tail" style={{ color: 'var(--text3)' }}>{docText.slice(pos)}</span>);
-    }
-    return elements;
+          {showRight && (
+            <span
+              className="boundary-handle"
+              title="Drag to adjust chunk end"
+              onPointerDown={e => beginBoundaryDrag('right', e, activeChunk)}
+            />
+          )}
+        </span>
+      );
+    });
   }
 
   const selectedCount = chunks.filter(c => c.selected).length;
@@ -673,24 +898,27 @@ function ChunkReviewStage({ doc, onDone, onBack }) {
       <div className="split-left">
         <div className="section-header">Source Document</div>
         <div className="hint" style={{ marginBottom: 16 }}>
-          Highlighted regions show chunk boundaries. Click a chunk to navigate.
+          Gray spans are chunks; the selected pair turns yellow. Click text or list item to sync. Drag the gold bars to resize the active chunk (overlaps allowed).
         </div>
-        <div className="text-panel" style={{ maxHeight: 'calc(100vh - 220px)' }}>
-          <div className="source-text">{buildHighlightedSource()}</div>
+        <div ref={textPanelRef} className="text-panel" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+          <div className="source-text">{renderSource()}</div>
         </div>
       </div>
 
       {/* Right: Chunk list */}
       <div className="split-right">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
           <div className="section-header" style={{ margin: 0 }}>Chunks</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn sm" onClick={() => runChunker()}>Re-chunk</button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn sm" onClick={() => runChunker()} disabled={generating}>Re-chunk</button>
+            <button className="btn sm primary" disabled={selectedCount === 0 || generating} onClick={() => onDone(chunks)}>
+              Generate ({selectedCount}) →
+            </button>
           </div>
         </div>
 
         {/* Settings */}
-        <details style={{ marginBottom: 16 }}>
+        <details style={{ marginBottom: 12 }}>
           <summary style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)', cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Chunk Settings
           </summary>
@@ -732,7 +960,8 @@ function ChunkReviewStage({ doc, onDone, onBack }) {
           chunks.map((chunk, i) => (
             <div
               key={chunk.chunk_id}
-              className={`chunk-item ${chunk.selected ? 'selected-chunk' : 'deselected'} fade-in`}
+              id={`chunk-row-${chunk.chunk_id}`}
+              className={`chunk-item ${chunk.selected ? 'selected-chunk' : 'deselected'} ${activeChunk === chunk.chunk_id ? 'chunk-item-active' : ''} fade-in`}
               style={{ animationDelay: `${i * 0.03}s` }}
               onClick={() => setActiveChunk(chunk.chunk_id === activeChunk ? null : chunk.chunk_id)}
             >
@@ -772,13 +1001,6 @@ function ChunkReviewStage({ doc, onDone, onBack }) {
           ))
         )}
 
-        <div style={{ marginTop: 20 }}>
-          <button className="btn primary" style={{ width: '100%' }}
-            disabled={selectedCount === 0}
-            onClick={() => onDone(chunks)}>
-            Generate Cards ({selectedCount} chunks) →
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -799,6 +1021,8 @@ function GenerationStage({ onDone }) {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0, cards: [] });
   const [error, setError] = useState(null);
+  const [genMessage, setGenMessage] = useState(null);
+  const abortRef = useRef(null);
 
   useEffect(() => { checkOllama(); }, []);
 
@@ -808,28 +1032,49 @@ function GenerationStage({ onDone }) {
       const data = await res.json();
       setOllamaStatus(data.status === 'ok');
       setModels(data.models || []);
-      if (data.models?.length > 0) {
-        setSettings(s => ({ ...s, model: data.models[0] }));
-      }
+      setSettings(s => ({
+        ...s,
+        model: data.models?.includes(s.model) ? s.model : (data.models?.[0] || s.model),
+      }));
     } catch { setOllamaStatus(false); }
+  }
+
+  async function stopGeneration() {
+    try {
+      await fetch(API + '/api/generate/cancel', { method: 'POST' });
+    } catch (_) {}
+    if (abortRef.current) abortRef.current.abort();
+  }
+
+  async function clearGeneratedCards() {
+    try {
+      await api('/api/cards/clear', { method: 'POST', body: '{}' });
+    } catch (_) {}
+    setProgress({ done: 0, total: 0, cards: [] });
+    setGenMessage(null);
   }
 
   async function startGeneration() {
     setError(null);
+    setGenMessage(null);
     setGenerating(true);
     setProgress({ done: 0, total: 0, cards: [] });
+    abortRef.current = new AbortController();
 
     try {
-      // Save settings first
       await api('/api/settings/generate', { method: 'PUT', body: JSON.stringify(settings) });
 
       const res = await fetch(API + '/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
+        signal: abortRef.current.signal,
       });
 
-      if (!res.ok) { const e = await res.json(); throw new Error(e.detail); }
+      if (!res.ok) {
+        const e = await res.json();
+        throw new Error(e.detail);
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -854,15 +1099,26 @@ function GenerationStage({ onDone }) {
                 total: msg.total,
                 cards: [...p.cards, msg.card],
               }));
+            } else if (msg.type === 'cancelled') {
+              setGenerating(false);
+              setGenMessage(`Stopped after ${msg.card_count} card(s). Adjust settings and start again, or clear results.`);
+              return;
             } else if (msg.type === 'done') {
               setGenerating(false);
+              setGenMessage(null);
               onDone();
               return;
             }
-          } catch {}
+          } catch (_) {}
         }
       }
+      setGenerating(false);
     } catch (e) {
+      if (e.name === 'AbortError') {
+        setGenerating(false);
+        setGenMessage('Request cancelled.');
+        return;
+      }
       setError(e.message);
       setGenerating(false);
     }
@@ -927,16 +1183,26 @@ function GenerationStage({ onDone }) {
       </div>
 
       {error && <div className="vld-msg error" style={{ marginBottom: 16 }}>{error}</div>}
+      {genMessage && (
+        <div className="vld-msg warning" style={{ marginBottom: 16 }}>
+          {genMessage}
+        </div>
+      )}
 
       {generating && (
         <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text2)' }}>
-              Generating cards...
+              Generating cards…
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)' }}>
-              {progress.done} / {progress.total}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)' }}>
+                {progress.done} / {progress.total}
+              </span>
+              <button type="button" className="btn sm danger" onClick={stopGeneration}>
+                Stop
+              </button>
+            </div>
           </div>
           <div className="progress-bar-track">
             <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
@@ -959,10 +1225,16 @@ function GenerationStage({ onDone }) {
       )}
 
       {!generating && (
-        <button className="btn primary" style={{ width: '100%' }}
-          onClick={startGeneration} disabled={!ollamaStatus}>
-          Start Generation →
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button className="btn primary" style={{ width: '100%' }} onClick={startGeneration} disabled={!ollamaStatus}>
+            Start Generation →
+          </button>
+          {progress.cards.length > 0 && (
+            <button className="btn" style={{ width: '100%' }} onClick={clearGeneratedCards}>
+              Clear generated cards
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -1162,11 +1434,14 @@ function ExportStage({ onReset }) {
 
   async function doExport() {
     const res = await fetch(API + '/api/export/csv');
+    if (!res.ok) return;
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'anki_cloze_cards.csv';
+    const cd = res.headers.get('Content-Disposition');
+    const m = cd && cd.match(/filename="([^"]+)"/i);
+    a.download = m ? m[1] : 'export_ankigen.csv';
     a.click();
     URL.revokeObjectURL(url);
     setDone(true);
@@ -1221,6 +1496,12 @@ function App() {
   const [stageIdx, setStageIdx] = useState(0);
   const [docInfo, setDocInfo] = useState(null);
   const [cardCount, setCardCount] = useState(0);
+  const [theme, setTheme] = useState(() => localStorage.getItem('ankigen_theme') || 'dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('ankigen_theme', theme);
+  }, [theme]);
 
   function reset() {
     setStageIdx(0);
@@ -1230,10 +1511,24 @@ function App() {
 
   return (
     <div className="app">
-      {/* Top bar */}
       <div className="topbar">
         <div className="topbar-logo">⟨ Cloze Gen ⟩</div>
         <div className="topbar-sep" />
+        <button
+          type="button"
+          className="theme-toggle-nav"
+          onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
+          title="Toggle color theme"
+        >
+          {theme === 'dark' ? '☾ Dark' : '☀ Light'}
+        </button>
+        {docInfo && (
+          <div className="topbar-doc" title={docInfo.filename}>
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{docInfo.filename}</span>
+            <span style={{ flexShrink: 0 }}>{docInfo.char_count?.toLocaleString()} chars</span>
+          </div>
+        )}
+        <div className="topbar-fill" />
         <div className="stage-nav">
           {STAGES.map((s, i) => (
             <button
@@ -1247,12 +1542,6 @@ function App() {
             </button>
           ))}
         </div>
-        {docInfo && (
-          <div style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)', display: 'flex', gap: 16 }}>
-            <span>{docInfo.filename}</span>
-            <span>{docInfo.char_count?.toLocaleString()} chars</span>
-          </div>
-        )}
       </div>
 
       {/* Main content */}
